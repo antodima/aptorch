@@ -1,0 +1,15 @@
+# configuration file used by the pre-commit python module for installing
+# a pre-commit git hook that checks whether commit messages are compliant
+# with the "Conventional Commits" convention.
+repos:
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v2.3.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [] # optional: list of Conventional Commits types to allow e.g. [feat, fix, ci, chore, test]
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.3.0
+    hooks:
+      - id: no-commit-to-branch
+        args: ['--branch', 'main', '--branch', 'develop']
