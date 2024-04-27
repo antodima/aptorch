@@ -6,8 +6,4 @@
 
 ### Unknown
 
-* Update release.yml ([`cb4fb9f`](https://github.com/antodima/aptorch/commit/cb4fb9f9d1a376fb3a8d064b064fd02f030cce14))
-
-* Create release.yml ([`f2ada23`](https://github.com/antodima/aptorch/commit/f2ada238ed438ab4252dc67345beca8e7596f23f))
-
-* first commit ([`a83db8b`](https://github.com/antodima/aptorch/commit/a83db8b81c3f812f2aef8a855bd3d332bac1a788))
+* first commit ([`2ed8066`](https://github.com/antodima/aptorch/commit/2ed8066383b87ea961558e9ed6c1a2cd1cb0e3f8))
