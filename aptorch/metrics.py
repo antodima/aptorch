@@ -23,4 +23,5 @@ def nrmse(
         The RMSE score.
     """
     rmse = torch.sqrt(F.mse_loss(input, target)).item()
-    return rmse / (target.max() - target.min())
+    norm = (target.max() - target.min()).item()
+    return rmse / (norm + 1e-6)
