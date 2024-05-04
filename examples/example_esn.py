@@ -25,7 +25,7 @@ def grid_search(**kwargs) -> Generator:
         yield config
 
 
-def build_vanilla_esn(**config) -> Module:
+def build_vanilla_esn(**config) -> ESN:
     reservoir = Reservoir(
         input_size=config["input_size"],
         hidden_size=config["hidden_size"],
