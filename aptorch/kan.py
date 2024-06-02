@@ -1,9 +1,9 @@
 # pylint: disable=not-callable
-from typing import Tuple
+from typing import List, Tuple
 import torch
 from torch import Tensor
 import torch.nn.functional as F
-from torch.nn import Module, Parameter
+from torch.nn import Module, Parameter, ModuleList
 
 
 class Splines(Module):
@@ -92,3 +92,32 @@ class Splines(Module):
 
         out = basis_out + spline_out  # (batch_size, output_size)
         return out
+
+
+class KAN(Module):
+
+    def __init__(
+        self,
+        layers: List[int],
+        basis_order: int = 3,
+        basis_range: Tuple[int, int] = (-1, 1),
+        n_intervals: int = 5,
+    ) -> None:
+        super().__init__()
+        self.layers = ModuleList()
+        for input_size, output_size in zip(layers, layers[1:]):
+            self.layers.append(
+                Splines(
+                    input_size=input_size,
+                    output_size=output_size,
+                    basis_order=basis_order,
+                    basis_range=basis_range,
+                    n_intervals=n_intervals,
+                )
+            )
+
+    def forward(self, x: Tensor) -> Tensor:
+        for layer in self.layers:
+            x = layer(x)
+
+        return x

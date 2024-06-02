@@ -11,6 +11,13 @@
             "program": "${workspaceFolder}/examples/example_esn.py",
             "console": "integratedTerminal",
             "preLaunchCommand": "poetry install"
+        }, {
+            "name": "Run example_kan.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/example_kan.py",
+            "console": "integratedTerminal",
+            "preLaunchCommand": "poetry install"
         }
     ]
 }
