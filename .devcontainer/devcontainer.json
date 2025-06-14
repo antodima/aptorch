@@ -12,8 +12,8 @@
 		}
 	},
 	"runArgs": [
-		"--gpus",
-		"all"
+		// "--gpus",
+		// "all"
 	],
 	// 👇 Features to add to the Dev Container. More info: https://containers.dev/implementors/features.
 	// "features": {},
@@ -79,7 +79,7 @@
 		}
 	},
 	// 👇 Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-	"remoteUser": "root",
+	// "remoteUser": "root",
 	// Use 'postCreateCommand' to run commands after the container is created.
 	"postCreateCommand": "chmod -R +x ./.devcontainer && ./.devcontainer/post-create-command.sh",
 	// Use 'postStartCommand' to run commands after the container is started.

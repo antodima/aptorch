@@ -1,5 +1,5 @@
-ARG VARIANT="3.10-bullseye"
-FROM mcr.microsoft.com/vscode/devcontainers/python:0-${VARIANT}
+ARG VARIANT="3.12-bullseye"
+FROM mcr.microsoft.com/vscode/devcontainers/python:${VARIANT}
 
 ARG INSTALL_DEV_TOOLS
 ARG POETRY_VERSION
