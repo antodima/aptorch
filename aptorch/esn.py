@@ -1,13 +1,11 @@
-# mypy: disable-error-code="arg-type, union-attr"
-# pylint: disable=not-callable, redefined-builtin
 from typing import Callable, Optional, Tuple
 
 import torch
-from torch import Tensor
 import torch.nn.functional as F
+from torch import Tensor
 from torch.nn import Module, Parameter
 
-from aptorch.init import uniform, normal
+from aptorch.init import normal, uniform
 
 
 class Reservoir(Module):

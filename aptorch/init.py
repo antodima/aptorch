@@ -1,12 +1,13 @@
 from typing import Callable
+
 import torch
 from torch.nn.init import (
-    uniform_,
     normal_,
-    trunc_normal_,
+    ones_,
     orthogonal_,
     sparse_,
-    ones_,
+    trunc_normal_,
+    uniform_,
     zeros_,
 )
 

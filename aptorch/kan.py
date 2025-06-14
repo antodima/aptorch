@@ -1,9 +1,9 @@
-# pylint: disable=not-callable
 from typing import List, Tuple
+
 import torch
-from torch import Tensor
 import torch.nn.functional as F
-from torch.nn import Module, Parameter, ModuleList
+from torch import Tensor
+from torch.nn import Module, ModuleList, Parameter
 
 
 class Splines(Module):
@@ -68,7 +68,8 @@ class Splines(Module):
             the values of the polynomial for the input x (batch_size, output_size)
         """
         basis_out = F.linear(
-            self.basis_func(x), self.basis_weights)  # (batch_size, output_size)
+            # (batch_size, output_size)
+            self.basis_func(x), self.basis_weights)
 
         # computes the basis for the input
         x = x.unsqueeze(-1)
