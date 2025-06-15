@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "aptorch"
 version = "0.1.0"
-description = "Aptus pytorch models using Reservoir Computing, Associative Memory Networks and Recurrent Neural Networks."
+description = "Aptus pytorch models."
 authors = ["antodima <antonio.di.mauro.23@gmail.com>"]
 readme = "README.md"
 
@@ -9,6 +9,8 @@ readme = "README.md"
 python = "^3.10"
 torch = "2.2.0"
 numpy = "^1.26.4"
+datasets = "^3.6.0"
+tokenizers = "^0.21.1"
 
 
 [tool.poetry.group.dev.dependencies]
