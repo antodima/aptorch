@@ -1,7 +1,9 @@
 from typing import Tuple
 
 import torch
+from datasets import load_dataset
 from torch import FloatTensor, Tensor
+from torch.utils.data import Dataset
 
 
 def narma10(
@@ -26,3 +28,24 @@ def narma10(
     inputs: Tensor = FloatTensor(x[lag:]).view(-1, 1)
     targets: Tensor = FloatTensor(y[lag:]).view(-1, 1)
     return inputs, targets
+
+
+class DivinaCommediaDataset(Dataset):
+
+    def __init__(self, dataset):
+        self.dataset = dataset
+
+    def __len__(self):
+        return len(self.dataset["text"])
+
+    def __getitem__(self, index):
+        return self.dataset["text"][index]
+
+
+def divina_commedia():
+    dataset = load_dataset("maiurilorenzo/divina-commedia", split="train")
+    train_size = int(len(dataset) * 0.8)
+    train_dataset = dataset[:train_size]
+    test_dataset = dataset[train_size:]
+
+    return train_dataset, test_dataset
