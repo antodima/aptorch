@@ -114,12 +114,6 @@ class DLM(nn.Module):
         self.logits = nn.Linear(self.emb_dim, self.num_tokens)
 
     def forward(self, x, mask_ratio: float):
-        batch_size, seq_len = x.shape
-        mask_probs = torch.rand(batch_size, seq_len)
-        mask = mask_probs < mask_ratio
-        mask = mask & (x != self.pad_idx)
-        x = torch.where(mask, self.mask_idx, x)
-
         x = self.emb_token(x)
         x = self.emb_time(x)
         attn_output, _ = self.attn(
@@ -133,7 +127,7 @@ class DLM(nn.Module):
         x = x + self.dropout(ff_output)
         logits = self.logits(x)
 
-        return logits, mask.int()
+        return logits
 
     @torch.no_grad()
     def sample(
@@ -168,8 +162,16 @@ def pretraining(
         model.train()
         running_loss = 0.
         for i, (x, y) in enumerate(pbar := tqdm(train_loader)):
+            # mask the prompt
+            batch_size, seq_len = x.shape
+            mask_probs = torch.rand(batch_size, seq_len)
+            mask = mask_probs < mask_ratio
+            mask = mask & (x != pad_idx)
+            x = torch.where(mask, mask_idx, x)
+
             optim.zero_grad()
-            logits, mask = model(x, mask_ratio)
+            logits = model(x, mask_ratio)
+            mask = mask.float()
 
             loss = torch.tensor(0.0)
             if mask.sum() != 0:
