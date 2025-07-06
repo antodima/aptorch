@@ -1,7 +1,11 @@
+from typing import Callable
+
 import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
+from torch.utils.data import DataLoader, Dataset
+from tqdm import tqdm
 
 
 def get_emb(sin_inp):
@@ -137,3 +141,41 @@ class DLM(nn.Module):
         sampling_steps: int = 100
     ):
         pass
+
+
+def pretraining(
+    model: nn.Module,
+    optim: torch.optim.Optimizer,
+    training_set: Dataset,
+    collate_fn: Callable,
+    lr: float,
+    n_epochs: int,
+    batch_size: int,
+    emb_dim: int,
+    ff_dim: int,
+    mask_ratio: float,
+    pad_idx: int,
+    mask_idx: int,
+    num_tokens: int,
+):
+    """Train the model on the masked prompt.
+    """
+    torch.manual_seed(23)
+    for epoch in range(n_epochs):
+        train_loader = DataLoader(
+            training_set, collate_fn=collate_fn, batch_size=batch_size, shuffle=True)
+
+        model.train()
+        running_loss = 0.
+        for i, (x, y) in enumerate(pbar := tqdm(train_loader)):
+            optim.zero_grad()
+            logits, mask = model(x, mask_ratio)
+
+            loss = torch.tensor(0.0)
+            if mask.sum() != 0:
+                loss = llada_loss(x, logits, mask) / mask_ratio
+                loss.backward()
+                optim.step()
+                running_loss += loss.item()
+                pbar.set_description(
+                    f"epoch {epoch+1}/{n_epochs}: loss={running_loss/(i+1):.5f}")
