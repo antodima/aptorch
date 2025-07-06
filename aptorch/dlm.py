@@ -65,7 +65,11 @@ class PositionalEncoding(nn.Module):
 
 
 class DLM(nn.Module):
-    """https://arxiv.org/pdf/2502.09992
+    """Combination of LLaDa, DiffuSeq and DLM-One.
+
+    LLaDa    -> https://arxiv.org/pdf/2502.09992
+    DiffuSeq -> https://arxiv.org/abs/2210.08933
+    DLM-One  -> https://arxiv.org/abs/2506.00290
     """
 
     def __init__(
@@ -126,3 +130,10 @@ class DLM(nn.Module):
         logits = self.logits(x)
 
         return logits, mask.int()
+
+    @torch.no_grad()
+    def sample(
+        self,
+        sampling_steps: int = 100
+    ):
+        pass

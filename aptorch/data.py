@@ -43,7 +43,13 @@ class DivinaCommediaDataset(Dataset):
         return len(self.dataset["text"])
 
     def __getitem__(self, index):
-        return self.dataset["text"][index]
+        prompt = self.dataset["text"][index]
+        response = None
+        try:
+            response = self.dataset["text"][index+1]
+            return prompt, response
+        except:
+            return prompt, ""
 
 
 def divina_commedia():
