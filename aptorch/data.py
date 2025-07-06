@@ -2,6 +2,10 @@ from typing import Tuple
 
 import torch
 from datasets import load_dataset
+from tokenizers import Tokenizer
+from tokenizers.models import BPE
+from tokenizers.pre_tokenizers import Whitespace
+from tokenizers.trainers import BpeTrainer
 from torch import FloatTensor, Tensor
 from torch.utils.data import Dataset
 
@@ -49,3 +53,18 @@ def divina_commedia():
     test_dataset = dataset[train_size:]
 
     return train_dataset, test_dataset
+
+
+def divina_commedia_tokenizer(dataset):
+    tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
+    tokenizer.pre_tokenizer = Whitespace()
+    tokenizer.enable_padding(pad_token="[PAD]", pad_id=0)
+    tokenizer.add_special_tokens(["[PAD]", "[UNK]", "[MASK]"])
+    trainer = BpeTrainer()
+
+    tokenizer.train_from_iterator(
+        dataset["text"],
+        trainer=trainer,
+    )
+
+    return tokenizer
