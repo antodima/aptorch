@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Callable
 
 import numpy as np
@@ -69,11 +70,7 @@ class PositionalEncoding(nn.Module):
 
 
 class DLM(nn.Module):
-    """Combination of LLaDa, DiffuSeq and DLM-One.
-
-    LLaDa    -> https://arxiv.org/pdf/2502.09992
-    DiffuSeq -> https://arxiv.org/abs/2210.08933
-    DLM-One  -> https://arxiv.org/abs/2506.00290
+    """Based on LLaDa (https://arxiv.org/pdf/2502.09992).
     """
 
     def __init__(
@@ -113,7 +110,7 @@ class DLM(nn.Module):
         self.dropout = nn.Dropout(0.1)
         self.logits = nn.Linear(self.emb_dim, self.num_tokens)
 
-    def forward(self, x, mask_ratio: float):
+    def forward(self, x):
         x = self.emb_token(x)
         x = self.emb_time(x)
         attn_output, _ = self.attn(
@@ -132,14 +129,21 @@ class DLM(nn.Module):
     @torch.no_grad()
     def sample(
         self,
-        sampling_steps: int = 100
+        x,
+        max_seq_len: int = 10,
+        sampling_steps: int = 100,
     ):
-        pass
+        prompt_len = x.shape[1]
+        if max_seq_len <= prompt_len:
+            raise ValueError(
+                "max_seq_len must be greater than prompt_len for generation.")
+
+        initial_response_len = max_seq_len - prompt_len
+        masked_response_part = torch.full(
+            (1, initial_response_len), self.mask_idx, dtype=torch.long)
 
 
 def pretraining(
-    model: nn.Module,
-    optim: torch.optim.Optimizer,
     training_set: Dataset,
     collate_fn: Callable,
     lr: float,
@@ -151,26 +155,43 @@ def pretraining(
     pad_idx: int,
     mask_idx: int,
     num_tokens: int,
-):
+) -> nn.Module:
     """Train the model on the masked prompt.
     """
     torch.manual_seed(23)
-    for epoch in range(n_epochs):
-        train_loader = DataLoader(
-            training_set, collate_fn=collate_fn, batch_size=batch_size, shuffle=True)
 
-        model.train()
+    model = DLM(
+        num_tokens=num_tokens,
+        emb_dim=emb_dim,
+        ff_dim=ff_dim,
+        pad_idx=pad_idx,
+        mask_idx=mask_idx,
+    )
+    optim = torch.optim.AdamW(model.parameters(), lr=lr)
+    n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"number of trainable parameters: {n_params}")
+
+    train_loader = DataLoader(
+        training_set,
+        collate_fn=collate_fn,
+        batch_size=batch_size,
+        shuffle=True,
+    )
+    model.train()
+    for epoch in range(n_epochs):
+        train_loader_copy = deepcopy(train_loader)
+
         running_loss = 0.
-        for i, (x, y) in enumerate(pbar := tqdm(train_loader)):
+        for i, (x, y) in enumerate(pbar := tqdm(train_loader_copy)):
             # mask the prompt
             batch_size, seq_len = x.shape
             mask_probs = torch.rand(batch_size, seq_len)
             mask = mask_probs < mask_ratio
             mask = mask & (x != pad_idx)
-            x = torch.where(mask, mask_idx, x)
+            x_masked = torch.where(mask, mask_idx, x)
 
             optim.zero_grad()
-            logits = model(x, mask_ratio)
+            logits = model(x_masked)
             mask = mask.float()
 
             loss = torch.tensor(0.0)
@@ -181,3 +202,5 @@ def pretraining(
                 running_loss += loss.item()
                 pbar.set_description(
                     f"epoch {epoch+1}/{n_epochs}: loss={running_loss/(i+1):.5f}")
+
+    return model
