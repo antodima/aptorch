@@ -138,9 +138,52 @@ class DLM(nn.Module):
             raise ValueError(
                 "max_seq_len must be greater than prompt_len for generation.")
 
+        if x.shape[0] != 1:
+            raise ValueError(
+                "Sampling method currently supports batch_size = 1.")
+
         initial_response_len = max_seq_len - prompt_len
         masked_response_part = torch.full(
             (1, initial_response_len), self.mask_idx, dtype=torch.long)
+
+        current_sequence = torch.cat((x, masked_response_part), dim=-1)
+        response_indices_slice = slice(prompt_len, max_seq_len)
+        for step_idx in range(sampling_steps):
+            next_t_val = 1.0 - ((step_idx + 1) / sampling_steps)
+            logits = self.forward(current_sequence)
+            predicted_tokens_all = torch.argmax(logits, dim=-1)
+            masked_in_response = (
+                current_sequence[:, response_indices_slice] == self.mask_idx)
+            r0_candidate = current_sequence.clone()
+            r0_candidate[:, response_indices_slice] = torch.where(
+                masked_in_response,
+                predicted_tokens_all[:, response_indices_slice],
+                current_sequence[:, response_indices_slice]
+            )
+            num_tokens_to_be_masked_in_next_step = int(
+                initial_response_len * next_t_val)
+            num_tokens_to_be_masked_in_next_step = max(
+                0, num_tokens_to_be_masked_in_next_step)
+            next_sequence_step = r0_candidate.clone()
+            response_logits = logits[:, response_indices_slice, :].squeeze(0)
+            response_probs = F.softmax(response_logits, dim=-1)
+            predicted_tokens_response = predicted_tokens_all[:, response_indices_slice].squeeze(
+                0)
+            # low confidence remasking strategy
+            predicted_confidence = response_probs.gather(
+                1, predicted_tokens_response.unsqueeze(-1)).squeeze(-1)
+            sorted_confidences, sorted_indices_in_response = torch.sort(
+                predicted_confidence, descending=False)
+            relative_indices_to_remask = sorted_indices_in_response[
+                :num_tokens_to_be_masked_in_next_step]
+            full_indices_to_remask = response_indices_slice.start + relative_indices_to_remask
+            next_sequence_step[:, full_indices_to_remask] = self.mask_idx
+            current_sequence = next_sequence_step
+
+            if (current_sequence[:, response_indices_slice] != self.mask_idx).all():
+                break
+        
+        return current_sequence
 
 
 def pretraining(
