@@ -4,8 +4,9 @@ from typing import Callable
 import numpy as np
 import torch
 import torch.nn.functional as F
+from datasets import Dataset
 from torch import nn
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 
@@ -182,7 +183,7 @@ class DLM(nn.Module):
 
             if (current_sequence[:, response_indices_slice] != self.mask_idx).all():
                 break
-        
+
         return current_sequence
 
 
@@ -225,7 +226,7 @@ def pretraining(
         train_loader_copy = deepcopy(train_loader)
 
         running_loss = 0.
-        for i, (x, y) in enumerate(pbar := tqdm(train_loader_copy)):
+        for i, x in enumerate(pbar := tqdm(train_loader_copy)):
             # mask the prompt
             batch_size, seq_len = x.shape
             mask_probs = torch.rand(batch_size, seq_len)

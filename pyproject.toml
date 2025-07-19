@@ -12,6 +12,7 @@ numpy = "^1.26.4"
 datasets = "^3.6.0"
 tokenizers = "^0.21.1"
 lightning = "^2.5.2"
+transformers = "^4.53.2"
 
 
 [tool.poetry.group.dev.dependencies]
