@@ -1,5 +1,5 @@
 runs/*
-lightning_logs/*
+**/lightning_logs/*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
