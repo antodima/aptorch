@@ -13,6 +13,8 @@ datasets = "^3.6.0"
 tokenizers = "^0.21.1"
 lightning = "^2.5.2"
 transformers = "^4.53.2"
+optuna = "^4.4.0"
+optuna-integration = {extras = ["pytorch-lightning"], version = "^4.4.0"}
 
 
 [tool.poetry.group.dev.dependencies]
