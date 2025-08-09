@@ -1,35 +1,18 @@
-[tool.poetry]
+[project]
 name = "aptorch"
 version = "0.1.0"
-description = "Aptus pytorch models."
-authors = ["antodima <antonio.di.mauro.23@gmail.com>"]
+description = "Aptus pytorch models and algorithms"
 readme = "README.md"
-
-[tool.poetry.dependencies]
-python = "^3.10"
-torch = "^2.7.1"
-numpy = "^1.26.4"
-datasets = "^3.6.0"
-tokenizers = "^0.21.1"
-lightning = "^2.5.2"
-transformers = "^4.53.2"
-optuna = "^4.4.0"
-optuna-integration = {extras = ["pytorch-lightning"], version = "^4.4.0"}
-
-
-[tool.poetry.group.dev.dependencies]
-pre-commit = "^3.6.2"
-python-semantic-release = "^9.1.1"
-ipykernel = "^6.29.3"
-pytest = "^8.1.1"
-pytest-cov = "^4.1.0"
-tqdm = "^4.66.2"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.poe.tasks]
-install = "poetry install --no-interaction --only-root"
-install_dev_deps = "poetry install --no-interaction --no-root --only=main,dev"
-start_shell = "echo 'source $(poetry env info --path)/bin/activate' >> ~/.bashrc"
+requires-python = ">=3.13"
+dependencies = [
+    "datasets>=4.0.0",
+    "ipykernel>=6.30.1",
+    "lightning>=2.5.2",
+    "optuna>=4.4.0",
+    "optuna-integration[pytorch-lightning]>=4.4.0",
+    "peft>=0.17.0",
+    "pre-commit>=4.2.0",
+    "tokenizers>=0.21.4",
+    "torch>=2.8.0",
+    "transformers>=4.55.0",
+]
