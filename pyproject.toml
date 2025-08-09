@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "aptorch"
 version = "0.1.0"
@@ -16,3 +20,9 @@ dependencies = [
     "torch>=2.8.0",
     "transformers>=4.55.0",
 ]
+
+[tool.setuptools.packages.find]
+where = ["aptorch"]
+
+[tool.uv]
+package = true
