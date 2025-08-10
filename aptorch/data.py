@@ -2,6 +2,7 @@ from typing import Tuple
 
 import requests
 import torch
+import torch.nn.functional as F
 from torch import FloatTensor, Tensor
 from torch.utils.data import Dataset
 
@@ -70,6 +71,7 @@ class ShakespeareDataset(Dataset):
         self.output_len = output_len
         self.seq_len = input_len + output_len
         self.c2i = chat_to_token
+        self.vocab_size = len(self.c2i)
         characters = list(text)
         tokens = [self.c2i.get(c, unk_token) for c in characters]
         self.data = torch.tensor(
@@ -84,4 +86,5 @@ class ShakespeareDataset(Dataset):
         x, y = self.data[index, : self.input_len], self.data[index, self.input_len :]
         assert x.shape[-1] == self.input_len
         assert y.shape[-1] == self.output_len
-        return x, y.squeeze()
+        y_onehot = F.one_hot(y.squeeze(), num_classes=self.vocab_size)
+        return x, y_onehot.float()

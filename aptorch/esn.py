@@ -1,16 +1,16 @@
 from typing import Callable, Optional, Tuple
 
+import lightning as L
 import torch
 import torch.nn.functional as F
-from torch import Tensor
-from torch.nn import Module, Parameter
+from torch import Tensor, nn
+from torchmetrics import Accuracy
 
 from aptorch.init import normal, uniform
 
 
-class Reservoir(Module):
-    """Reservoir Layer.
-    """
+class Reservoir(nn.Module):
+    """Reservoir Layer."""
 
     def __init__(
         self,
@@ -32,30 +32,29 @@ class Reservoir(Module):
         self.alpha = alpha
 
         # model parameters
-        self.x = Parameter(
+        self.x = nn.Parameter(
             torch.zeros(self.hidden_size),
             requires_grad=False,
         )
-        self.weight_ih = Parameter(
+        self.weight_ih = nn.Parameter(
             input_init_fn(shape=(self.hidden_size, self.input_size)),
             requires_grad=False,
         )
-        self.bias_ih = Parameter(
+        self.bias_ih = nn.Parameter(
             input_init_fn(shape=(self.hidden_size)),
             requires_grad=False,
         )
-        self.weight_hh = Parameter(
+        self.weight_hh = nn.Parameter(
             hidden_init_fn(shape=(self.hidden_size, self.hidden_size)),
             requires_grad=False,
         )
 
         # scale parameters matrices
-        self.weight_ih.data = self._rescale(
-            self.weight_ih.data, scale=self.omega_in)
-        self.bias_ih.data = self._rescale(
-            self.bias_ih.data, scale=self.omega_in)
+        self.weight_ih.data = self._rescale(self.weight_ih.data, scale=self.omega_in)
+        self.bias_ih.data = self._rescale(self.bias_ih.data, scale=self.omega_in)
         self.weight_hh.data = self._rescale(
-            self.weight_hh.data, spectral_radius=self.rho)
+            self.weight_hh.data, spectral_radius=self.rho
+        )
 
     @staticmethod
     def _rescale(
@@ -64,8 +63,7 @@ class Reservoir(Module):
         scale: Optional[float] = None,
     ) -> Tensor:
         if spectral_radius is not None:
-            W.div_(torch.linalg.eigvals(W).abs().max()).mul_(
-                spectral_radius).float()
+            W.div_(torch.linalg.eigvals(W).abs().max()).mul_(spectral_radius).float()
 
         if scale is not None:
             W.mul_(scale).float()
@@ -94,14 +92,15 @@ class Reservoir(Module):
 
         states: Optional[Tensor] = None
         for u in input:
-            net_ih = F.linear(u.to(self.weight_ih),
-                              self.weight_ih, self.bias_ih)
+            net_ih = F.linear(u.to(self.weight_ih), self.weight_ih, self.bias_ih)
             net_hh = F.linear(x, self.weight_hh)
             x_t = torch.tanh(net_ih + net_hh)
             x = (1 - self.alpha) * x + self.alpha * x_t
-            states = x.view(-1, 1) \
-                if states is None \
+            states = (
+                x.view(-1, 1)
+                if states is None
                 else torch.cat((states, x.view(-1, 1)), dim=-1)
+            )
 
         self.x.data = x
         return states
@@ -110,9 +109,8 @@ class Reservoir(Module):
         self.x.data = torch.zeros(self.hidden_size).to(self.x)
 
 
-class Ridge(Module):
-    """Ridge Regression Layer.
-    """
+class Ridge(nn.Module):
+    """Ridge Regression Layer."""
 
     def __init__(
         self,
@@ -121,9 +119,9 @@ class Ridge(Module):
     ):
         super().__init__()
         self.output_size = output_size
-        self.A = Parameter(requires_grad=False)  # (seq_len, hidden_size)
-        self.B = Parameter(requires_grad=False)  # (hidden_size, hidden_size)
-        self.W = Parameter(requires_grad=False)  # (output_size, hidden_size)
+        self.A = nn.Parameter(requires_grad=False)  # (seq_len, hidden_size)
+        self.B = nn.Parameter(requires_grad=False)  # (hidden_size, hidden_size)
+        self.W = nn.Parameter(requires_grad=False)  # (output_size, hidden_size)
         self.l2 = l2
 
     def forward(
@@ -142,12 +140,18 @@ class Ridge(Module):
         """
         if self.training:
             batch_A, batch_B = (y.T @ X), (X.T @ X)
-            self.A.data, self.B.data = (self.A.data + batch_A, self.B.data +
-                                        batch_B) if len(self.A) is None else (batch_A, batch_B)
+            self.A.data, self.B.data = (
+                (self.A.data + batch_A, self.B.data + batch_B)
+                if len(self.A) is None
+                else (batch_A, batch_B)
+            )
 
-            A, B = self.A.data, self.B.data + \
-                torch.eye(self.B.data.shape[0]).to(self.B) * \
-                self.l2 if self.l2 else self.B.data
+            A, B = (
+                self.A.data,
+                self.B.data + torch.eye(self.B.data.shape[0]).to(self.B) * self.l2
+                if self.l2
+                else self.B.data,
+            )
 
             self.W.data = A @ B.pinverse()  # (output_size, hidden_size)
 
@@ -155,14 +159,13 @@ class Ridge(Module):
         return y_pred
 
 
-class ESN(Module):
-    """Vanilla Echo State Network.
-    """
+class ESN(nn.Module):
+    """Vanilla Echo State Network."""
 
     def __init__(
         self,
         reservoir: Reservoir,
-        readout: Module,
+        readout: nn.Module,
         washout: int = 0,
     ):
         super().__init__()
@@ -183,8 +186,8 @@ class ESN(Module):
 
         # apply washout
         n_states = states.shape[1]
-        washed_states = states[:, self.washout:]
-        washed_target = target[self.washout:, :]
+        washed_states = states[:, self.washout :]
+        washed_target = target[self.washout :, :]
         self.washout = max(0, (self.washout - n_states))
 
         output = None
@@ -192,3 +195,86 @@ class ESN(Module):
             output = self.readout(washed_states.T, washed_target)
 
         return output, washed_target
+
+
+class ESN_Pretrained(L.LightningModule):
+    """Train the esn model."""
+
+    def __init__(
+        self,
+        input_size: int,
+        hidden_size: int,
+        num_tokens: int,
+        lr: float,
+        omega_in: float = 1.0,
+        rho: float = 0.99,
+        alpha: float = 1.0,
+        input_init_fn: Callable = uniform(),
+        hidden_init_fn: Callable = normal(),
+    ):
+        super().__init__()
+        self.lr = lr
+        self.omega_in = omega_in
+        self.rho = rho
+        self.alpha = alpha
+        self.input_init_fn = input_init_fn
+        self.hidden_init_fn = hidden_init_fn
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.num_tokens = num_tokens
+
+        self.reservoir = Reservoir(
+            input_size=self.input_size,
+            hidden_size=self.hidden_size,
+            omega_in=self.omega_in,
+            rho=self.rho,
+            alpha=self.alpha,
+            input_init_fn=self.input_init_fn,
+            hidden_init_fn=self.hidden_init_fn,
+        )
+        self.readout = nn.Sequential(
+            nn.Linear(self.hidden_size, self.hidden_size),
+            nn.ReLU(),
+            nn.Linear(self.hidden_size, self.num_tokens),
+        )
+        self.loss_fn = nn.BCEWithLogitsLoss()
+        self.acc_fn = Accuracy(task="multiclass", num_classes=self.num_tokens)
+
+    def forward(self, inputs, target=None):
+        h = self.reservoir(inputs)
+        output = self.readout(h.T)
+        return output
+
+    def loop_step(self, batch):
+        inputs, targets = batch
+        logits = self(inputs)
+        loss = self.loss_fn(logits, targets)
+        acc = self.acc_fn(
+            torch.argmax(logits, dim=-1),
+            torch.argmax(targets, dim=-1),
+        )
+
+        return loss, acc
+
+    def training_step(self, batch, batch_idx):
+        loss, acc = self.loop_step(batch)
+        self.log(
+            "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
+        self.log(
+            "train_acc", acc, on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        loss, acc = self.loop_step(batch)
+        self.log(
+            "val_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
+        self.log(
+            "val_acc", acc, on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.AdamW(self.parameters(), lr=self.lr)

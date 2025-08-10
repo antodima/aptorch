@@ -1,30 +1,22 @@
-from copy import deepcopy
-from typing import Callable
-
 import lightning as L
 import numpy as np
 import torch
 import torch.nn.functional as F
-from datasets import Dataset
 from torch import nn
-from torch.utils.data import DataLoader
-from tqdm import tqdm
 
 
 def get_emb(sin_inp):
-    """Gets a base embedding for one dimension with sin and cos intertwined.
-    """
+    """Gets a base embedding for one dimension with sin and cos intertwined."""
     emb = torch.stack((sin_inp.sin(), sin_inp.cos()), dim=-1)
     return torch.flatten(emb, -2, -1)
 
 
 def llada_loss(inputs, logits_pred, mask):
-    """https://arxiv.org/pdf/2502.09992
-    """
+    """https://arxiv.org/pdf/2502.09992"""
     batch_size, seq_len, vocab_size = logits_pred.shape
     pred_flat = logits_pred.view(batch_size * seq_len, vocab_size)
     target_flat = inputs.view(batch_size * seq_len)
-    loss = F.cross_entropy(pred_flat, target_flat, reduction='none')
+    loss = F.cross_entropy(pred_flat, target_flat, reduction="none")
     loss = loss.view(batch_size, seq_len)
     loss = loss * mask.float()
     loss = loss.mean()
@@ -38,8 +30,7 @@ class PositionalEncoding(nn.Module):
         super(PositionalEncoding, self).__init__()
         self.org_channels = channels
         channels = int(np.ceil(channels / 2) * 2)
-        inv_freq = 1.0 / \
-            (10000 ** (torch.arange(0, channels, 2).float() / channels))
+        inv_freq = 1.0 / (10000 ** (torch.arange(0, channels, 2).float() / channels))
         self.register_buffer("inv_freq", inv_freq)
         self.register_buffer("cached_penc", None, persistent=False)
         self.channels = channels
@@ -54,8 +45,7 @@ class PositionalEncoding(nn.Module):
 
         self.cached_penc = None
         batch_size, x, orig_ch = tensor.shape
-        pos_x = torch.arange(x, device=tensor.device,
-                             dtype=self.inv_freq.dtype)
+        pos_x = torch.arange(x, device=tensor.device, dtype=self.inv_freq.dtype)
         sin_inp_x = torch.einsum("i,j->ij", pos_x, self.inv_freq)
         emb_x = get_emb(sin_inp_x)
         emb = torch.zeros(
@@ -72,8 +62,7 @@ class PositionalEncoding(nn.Module):
 
 
 class DLM(nn.Module):
-    """Based on LLaDa (https://arxiv.org/pdf/2502.09992).
-    """
+    """Based on LLaDa (https://arxiv.org/pdf/2502.09992)."""
 
     def __init__(
         self,
@@ -138,15 +127,16 @@ class DLM(nn.Module):
         prompt_len = x.shape[1]
         if max_seq_len <= prompt_len:
             raise ValueError(
-                "max_seq_len must be greater than prompt_len for generation.")
+                "max_seq_len must be greater than prompt_len for generation."
+            )
 
         if x.shape[0] != 1:
-            raise ValueError(
-                "Sampling method currently supports batch_size = 1.")
+            raise ValueError("Sampling method currently supports batch_size = 1.")
 
         initial_response_len = max_seq_len - prompt_len
         masked_response_part = torch.full(
-            (1, initial_response_len), self.mask_idx, dtype=torch.long)
+            (1, initial_response_len), self.mask_idx, dtype=torch.long
+        )
 
         current_sequence = torch.cat((x, masked_response_part), dim=-1)
         response_indices_slice = slice(prompt_len, max_seq_len)
@@ -155,30 +145,39 @@ class DLM(nn.Module):
             logits = self.forward(current_sequence)
             predicted_tokens_all = torch.argmax(logits, dim=-1)
             masked_in_response = (
-                current_sequence[:, response_indices_slice] == self.mask_idx)
+                current_sequence[:, response_indices_slice] == self.mask_idx
+            )
             r0_candidate = current_sequence.clone()
             r0_candidate[:, response_indices_slice] = torch.where(
                 masked_in_response,
                 predicted_tokens_all[:, response_indices_slice],
-                current_sequence[:, response_indices_slice]
+                current_sequence[:, response_indices_slice],
             )
             num_tokens_to_be_masked_in_next_step = int(
-                initial_response_len * next_t_val)
+                initial_response_len * next_t_val
+            )
             num_tokens_to_be_masked_in_next_step = max(
-                0, num_tokens_to_be_masked_in_next_step)
+                0, num_tokens_to_be_masked_in_next_step
+            )
             next_sequence_step = r0_candidate.clone()
             response_logits = logits[:, response_indices_slice, :].squeeze(0)
             response_probs = F.softmax(response_logits, dim=-1)
-            predicted_tokens_response = predicted_tokens_all[:, response_indices_slice].squeeze(
-                0)
+            predicted_tokens_response = predicted_tokens_all[
+                :, response_indices_slice
+            ].squeeze(0)
             # low confidence remasking strategy
             predicted_confidence = response_probs.gather(
-                1, predicted_tokens_response.unsqueeze(-1)).squeeze(-1)
+                1, predicted_tokens_response.unsqueeze(-1)
+            ).squeeze(-1)
             sorted_confidences, sorted_indices_in_response = torch.sort(
-                predicted_confidence, descending=False)
+                predicted_confidence, descending=False
+            )
             relative_indices_to_remask = sorted_indices_in_response[
-                :num_tokens_to_be_masked_in_next_step]
-            full_indices_to_remask = response_indices_slice.start + relative_indices_to_remask
+                :num_tokens_to_be_masked_in_next_step
+            ]
+            full_indices_to_remask = (
+                response_indices_slice.start + relative_indices_to_remask
+            )
             next_sequence_step[:, full_indices_to_remask] = self.mask_idx
             current_sequence = next_sequence_step
 
@@ -189,8 +188,7 @@ class DLM(nn.Module):
 
 
 class DLM_Pretrained(L.LightningModule):
-    """Train the model on the masked prompt.
-    """
+    """Train the model on the masked prompt."""
 
     def __init__(
         self,
@@ -241,14 +239,16 @@ class DLM_Pretrained(L.LightningModule):
 
     def training_step(self, batch, batch_idx):
         loss = self.loop_step(batch)
-        self.log("train_loss", loss, on_step=True,
-                 on_epoch=True, prog_bar=True, logger=True)
+        self.log(
+            "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
         return loss
 
     def validation_step(self, batch, batch_idx):
         loss = self.loop_step(batch)
-        self.log("val_loss", loss, on_step=True,
-                 on_epoch=True, prog_bar=True, logger=True)
+        self.log(
+            "val_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
         return loss
 
     def configure_optimizers(self):
@@ -258,15 +258,16 @@ class DLM_Pretrained(L.LightningModule):
         prompt_len = inputs.shape[1]
         if max_seq_len <= prompt_len:
             raise ValueError(
-                "max_seq_len must be greater than prompt_len for generation.")
+                "max_seq_len must be greater than prompt_len for generation."
+            )
 
         if inputs.shape[0] != 1:
-            raise ValueError(
-                "Sampling method currently supports batch_size = 1.")
+            raise ValueError("Sampling method currently supports batch_size = 1.")
 
         initial_response_len = max_seq_len - prompt_len
         masked_response_part = torch.full(
-            (1, initial_response_len), self.mask_idx, dtype=torch.long)
+            (1, initial_response_len), self.mask_idx, dtype=torch.long
+        )
 
         current_sequence = torch.cat((inputs, masked_response_part), dim=-1)
         response_indices_slice = slice(prompt_len, max_seq_len)
@@ -275,30 +276,39 @@ class DLM_Pretrained(L.LightningModule):
             logits = self(current_sequence)
             predicted_tokens_all = torch.argmax(logits, dim=-1)
             masked_in_response = (
-                current_sequence[:, response_indices_slice] == self.mask_idx)
+                current_sequence[:, response_indices_slice] == self.mask_idx
+            )
             r0_candidate = current_sequence.clone()
             r0_candidate[:, response_indices_slice] = torch.where(
                 masked_in_response,
                 predicted_tokens_all[:, response_indices_slice],
-                current_sequence[:, response_indices_slice]
+                current_sequence[:, response_indices_slice],
             )
             num_tokens_to_be_masked_in_next_step = int(
-                initial_response_len * next_t_val)
+                initial_response_len * next_t_val
+            )
             num_tokens_to_be_masked_in_next_step = max(
-                0, num_tokens_to_be_masked_in_next_step)
+                0, num_tokens_to_be_masked_in_next_step
+            )
             next_sequence_step = r0_candidate.clone()
             response_logits = logits[:, response_indices_slice, :].squeeze(0)
             response_probs = F.softmax(response_logits, dim=-1)
-            predicted_tokens_response = predicted_tokens_all[:, response_indices_slice].squeeze(
-                0)
+            predicted_tokens_response = predicted_tokens_all[
+                :, response_indices_slice
+            ].squeeze(0)
             # low confidence remasking strategy
             predicted_confidence = response_probs.gather(
-                1, predicted_tokens_response.unsqueeze(-1)).squeeze(-1)
+                1, predicted_tokens_response.unsqueeze(-1)
+            ).squeeze(-1)
             sorted_confidences, sorted_indices_in_response = torch.sort(
-                predicted_confidence, descending=False)
+                predicted_confidence, descending=False
+            )
             relative_indices_to_remask = sorted_indices_in_response[
-                :num_tokens_to_be_masked_in_next_step]
-            full_indices_to_remask = response_indices_slice.start + relative_indices_to_remask
+                :num_tokens_to_be_masked_in_next_step
+            ]
+            full_indices_to_remask = (
+                response_indices_slice.start + relative_indices_to_remask
+            )
             next_sequence_step[:, full_indices_to_remask] = self.mask_idx
             current_sequence = next_sequence_step
 

@@ -112,6 +112,7 @@ dependencies = [
     { name = "pre-commit" },
     { name = "tokenizers" },
     { name = "torch" },
+    { name = "torchmetrics" },
     { name = "transformers" },
 ]
 
@@ -126,6 +127,7 @@ requires-dist = [
     { name = "pre-commit", specifier = ">=4.2.0" },
     { name = "tokenizers", specifier = ">=0.21.4" },
     { name = "torch", specifier = ">=2.8.0" },
+    { name = "torchmetrics", specifier = ">=1.8.1" },
     { name = "transformers", specifier = ">=4.55.0" },
 ]
 
