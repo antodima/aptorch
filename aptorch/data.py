@@ -57,7 +57,7 @@ def get_shakespeare_text():
     return text
 
 
-class ShakespeareDataset(Dataset):
+class CharacterDataset(Dataset):
     def __init__(
         self,
         text: str,
@@ -66,7 +66,7 @@ class ShakespeareDataset(Dataset):
         input_len: int = 256,
         output_len: int = 1,
     ):
-        super(ShakespeareDataset).__init__()
+        super(CharacterDataset).__init__()
         self.input_len = input_len
         self.output_len = output_len
         self.seq_len = input_len + output_len
