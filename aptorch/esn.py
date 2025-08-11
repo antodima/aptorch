@@ -233,9 +233,9 @@ class ESN_Pretrained(L.LightningModule):
             hidden_init_fn=self.hidden_init_fn,
         )
         self.readout = nn.Sequential(
-            nn.Linear(self.hidden_size, self.hidden_size),
+            nn.Linear(self.hidden_size, self.hidden_size // 2),
             nn.ReLU(),
-            nn.Linear(self.hidden_size, self.num_tokens),
+            nn.Linear(self.hidden_size // 2, self.num_tokens),
         )
         self.loss_fn = nn.BCEWithLogitsLoss()
         self.acc_fn = Accuracy(task="multiclass", num_classes=self.num_tokens)
